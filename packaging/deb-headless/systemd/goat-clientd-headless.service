@@ -1,0 +1,74 @@
+[Unit]
+Description=goat-client tunnel daemon (headless)
+Documentation=https://github.com/USAREUR-AF/goat-client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Type=simple — the Go daemon does not call sd_notify(3) (it would
+# need a libsystemd binding we have not vendored). Type=notify caused
+# systemd to expect a READY=1 protocol message that never arrives,
+# eventually killing the unit with a fatal signal. simple is the
+# match for "daemon stays in the foreground; systemd treats it as
+# ready as soon as the process is up."
+Type=simple
+EnvironmentFile=-/etc/default/goat-client-headless
+ExecStart=/usr/bin/goat-clientd \
+    --headless \
+    --bundle=/var/lib/goat-client/bundle.cbor \
+    --socket=/run/goat-client/ipc.sock \
+    --trust-roots=/etc/goat-client/trust-roots.pem \
+    --config=/etc/goat-client/config.toml \
+    $GOAT_CLIENTD_FLAGS
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+User=goat-client
+Group=goat-client
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+
+ConfigurationDirectory=goat-client
+ConfigurationDirectoryMode=0750
+StateDirectory=goat-client
+StateDirectoryMode=0750
+CacheDirectory=goat-client
+CacheDirectoryMode=0750
+LogsDirectory=goat-client
+LogsDirectoryMode=0750
+RuntimeDirectory=goat-client
+RuntimeDirectoryMode=0755
+
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateMounts=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+RemoveIPC=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+# SystemCallFilter — the bare @system-service set rejects clone3 +
+# rseq + a handful of other syscalls modern Go runtimes (1.21+) emit
+# at startup, manifesting as Main PID code=dumped signal=SYS in
+# `systemctl status`. The widened set below mirrors what coreos /
+# systemd-upstream recommend for "ordinary network service written in
+# a modern memory-safe runtime." @resources covers Go's scheduler
+# tuning calls; @setuid is needed for the supplementary-group setup
+# the user-drop performs.
+SystemCallFilter=@system-service @resources @setuid
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

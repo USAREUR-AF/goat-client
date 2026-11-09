@@ -1,0 +1,64 @@
+#!/bin/sh
+# Driven by productbuild's postinstall hook (the .pkg payload installs
+# the .app bundle to /Applications and the daemon binary to
+# /usr/local/bin; this script wires up launchd, log dirs, and a
+# convenience symlink).
+#
+# v0.2: writes the mode-config file. Mode comes from the GOAT_MODE env
+# var (which the .pkg installer can pass via productbuild's
+# --packagepath choices or via `installer -applyChoiceChangesXML`).
+# Without an explicit choice the default is combined.
+
+set -ex
+
+APP=/Applications/goat-client.app
+LAUNCHD_PLIST=/Library/LaunchDaemons/io.dlf-dds.goat-clientd.plist  # oss-allow: existing app identifier
+LOG_DIR=/var/log/goat-client
+SUPPORT_DIR="/Library/Application Support/goat-client"
+RUN_DIR=/var/run/goat-client
+CONFIG_FILE="$SUPPORT_DIR/config.toml"
+
+mkdir -p "$LOG_DIR" "$SUPPORT_DIR" "$RUN_DIR"
+chmod 0755 "$LOG_DIR" "$SUPPORT_DIR" "$RUN_DIR"
+
+# Mode resolution: env var > existing config.toml > combined default.
+mode_value="${GOAT_MODE:-}"
+case "$mode_value" in
+    wg-cp0-only|netbird-only|combined) ;;
+    *)
+        if [ -n "$mode_value" ]; then
+            echo "goat-client postinstall: invalid GOAT_MODE=$mode_value; falling back to combined" >&2
+        fi
+        mode_value="combined"
+        ;;
+esac
+if [ ! -f "$CONFIG_FILE" ]; then
+    cat > "$CONFIG_FILE" <<EOF
+# goat-client config (v0.2). Managed by the installer + \`goat-client setmode\`.
+mode = "$mode_value"
+EOF
+    chmod 0644 "$CONFIG_FILE"
+fi
+
+# launchd will refuse to load a plist not owned by root:wheel with mode 0644.
+chown root:wheel "$LAUNCHD_PLIST"
+chmod 0644 "$LAUNCHD_PLIST"
+
+# Convenience symlink so operators can `goat-client --version` from any shell.
+if [ -x "$APP/Contents/MacOS/goat-client" ]; then
+    ln -fs "$APP/Contents/MacOS/goat-client" /usr/local/bin/goat-client
+fi
+
+# (Re)load the daemon. bootstrap if first install, kickstart if upgrade.
+if launchctl print system/io.dlf-dds.goat-clientd >/dev/null 2>&1; then  # oss-allow: existing app identifier
+    launchctl bootout system "$LAUNCHD_PLIST" || true
+fi
+launchctl bootstrap system "$LAUNCHD_PLIST"
+launchctl kickstart -k system/io.dlf-dds.goat-clientd  # oss-allow: existing app identifier
+
+# Open the GUI on first install (cosmetic; no-op if already running).
+if [ -d "$APP" ]; then
+    /usr/bin/open -a "$APP" || true
+fi
+
+exit 0

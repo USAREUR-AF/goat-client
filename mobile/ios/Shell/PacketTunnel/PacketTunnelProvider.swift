@@ -1,0 +1,204 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 U.S. Federal Government (in countries where recognized).
+//
+// PacketTunnelProvider — NEPacketTunnelProvider subclass that hosts the
+// goat-client tunnel inside the iOS Network Extension sandbox. Loads the
+// imported bundle and the operator-selected mode from the App Group
+// container, configures the tunnel network settings, extracts the utun
+// file descriptor, and hands control to GoatClientSDK on a per-mode start
+// path:
+//
+//   • `wg-cp0-only` — wg-cp0 outer only (v0.1.x regression bar).
+//   • `netbird-only` — inner netbird mesh only (no wg-cp0 outer
+//     claimed). The SDK Run blocks on ctx; the inner-mesh subsystem
+//     keeps its own goroutines running.
+//   • `combined` — both legs in one Go runtime (path A per ADR
+//     0840 amendment 2026-05-10b). wg-cp0 + inner mesh share the
+//     PacketTunnelProvider extension process.
+//
+// Mode dispatch happens inside the SDK Run — the native shell just
+// reads ModeStore and calls setMode/run; the SDK's status JSON
+// (inner_mesh block) surfaces per-leg state.
+//
+// Mode changes from the main app trigger stopTunnel + startTunnel — the
+// new mode is read from ModeStore on the next startTunnel.
+
+import NetworkExtension
+import os.log
+
+#if canImport(GoatClientSDK)
+// gomobile bind generates a Swift module named after the package import path.
+// Swift import name is `GoatClientSDK` (matches the Go package name).
+import GoatClientSDK
+#endif
+
+final class PacketTunnelProvider: NEPacketTunnelProvider {
+
+    private static let log = OSLog(subsystem: "io.dlf-dds.goat-client", category: "PacketTunnel") // oss-allow: existing app identifier
+
+    /// Background-thread holder for the GoatClientSDK Client; nil when
+    /// disconnected. Run() is blocking, so it lives on a detached Task.
+    private var clientTask: Task<Void, Never>?
+
+    /// Mode this provider instance is currently servicing. Captured at
+    /// startTunnel so a concurrent main-app mode flip can't race the
+    /// dispatch decision (the main app will issue a fresh start anyway).
+    private var activeMode: OperatingMode = .default
+
+    override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
+        let mode = ModeStore.read()
+        activeMode = mode
+        os_log("startTunnel invoked, mode=%{public}@", log: Self.log, type: .info, mode.rawValue)
+
+        // Every mode needs a bundle (wg-cp0 reads CPDevice* fields; netbird
+        // reads inner_mesh_setup + mobile_cert via the CBOR extension).
+        guard BundleStore.hasBundle else {
+            let err = NSError(domain: "io.dlf-dds.goat-client.PacketTunnel", // oss-allow: existing app identifier
+                              code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "no bundle imported; open the goat-client app and import a bundle first"])
+            completionHandler(err)
+            return
+        }
+
+        // Configure tunnel network settings. Real values come from the
+        // bundle's CPDeviceAddress + InnerMeshSetup once Worker A exposes
+        // them via the SDK; the placeholders let NE setup complete on
+        // every mode for the v0.2 baseline.
+        let settings = makeTunnelSettings(for: mode)
+        setTunnelNetworkSettings(settings) { [weak self] err in
+            guard let self = self else { return }
+            if let err = err {
+                os_log("setTunnelNetworkSettings failed: %{public}@", log: Self.log, type: .error, String(describing: err))
+                completionHandler(err)
+                return
+            }
+            self.startGoBackend(mode: mode, completionHandler: completionHandler)
+        }
+    }
+
+    override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
+        os_log("stopTunnel invoked: reason=%{public}d", log: Self.log, type: .info, reason.rawValue)
+        #if canImport(GoatClientSDK)
+        // The Go side's Stop() is idempotent; it tears down both legs
+        // (wg-cp0 outer + inner mesh) via ctx cancellation in Run.
+        currentClient?.stop()
+        #endif
+        clientTask?.cancel()
+        clientTask = nil
+        completionHandler()
+    }
+
+    // MARK: - private
+
+    #if canImport(GoatClientSDK)
+    /// Holds the live Client across startTunnel/stopTunnel. The gomobile-
+    /// generated Swift type is `GoatClientSDKClient`.
+    private var currentClient: GoatClientSDKClient?
+    #endif
+
+    private func makeTunnelSettings(for mode: OperatingMode) -> NEPacketTunnelNetworkSettings {
+        // tunnelRemoteAddress is required-non-empty; the wg-cp0 endpoint isn't
+        // a single host (it's a wireguard peer endpoint), so use a sentinel.
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "169.254.0.1")
+        // IPv4 placeholder — to be replaced with the real assigned tunnel
+        // address from the bundle.
+        let ipv4 = NEIPv4Settings(addresses: ["100.127.0.2"], subnetMasks: ["255.255.255.255"])
+        ipv4.includedRoutes = [NEIPv4Route.default()]
+        settings.ipv4Settings = ipv4
+        settings.mtu = 1280
+        // DNS — placeholder. Once the host_ios.go DNS adapter is wired
+        // through GoatClientSDK.DnsManager, the Go side will call ApplyDns
+        // with a real config.
+        settings.dnsSettings = NEDNSSettings(servers: ["9.9.9.9", "149.112.112.112"])
+        // mode-specific routes will diverge once we surface inner-mesh
+        // routes from the bundle (the SDK publishes them). For now,
+        // the same default IPv4 route works on every mode.
+        return settings
+    }
+
+    private func startGoBackend(mode: OperatingMode, completionHandler: @escaping (Error?) -> Void) {
+        #if canImport(GoatClientSDK)
+        guard let cfgDir = BundleStore.cfgDir, let stateFile = BundleStore.stateFile else {
+            let err = NSError(domain: "io.dlf-dds.goat-client.PacketTunnel", // oss-allow: existing app identifier
+                              code: 2,
+                              userInfo: [NSLocalizedDescriptionKey: "App Group container unavailable"])
+            completionHandler(err)
+            return
+        }
+
+        // The SDK Run() dispatches by mode internally (wg-cp0-only,
+        // netbird-only, combined). The native shell just passes through.
+        // Inner-mesh state is surfaced via GetTunnelStatus inner_mesh
+        // block; the SwiftUI status cards render per-leg.
+
+        let device = UIDevice.current.name
+        let osName = "iOS"
+        let osVersion = UIDevice.current.systemVersion
+
+        // gomobile-generated factory takes positional args matching the Go
+        // NewClient signature: (cfgDir, stateFile, deviceName, osVersion,
+        // osName, networkChangeListener, dnsManager). We pass nil listeners
+        // for now; once real callbacks are wired, populate with Swift
+        // implementations of the listener protocols.
+        let client = GoatClientSDKNewClient(cfgDir, stateFile, device, osVersion, osName, nil, nil)
+        currentClient = client
+        // Tell the SDK which v0.2 mode to dispatch on. The native ModeStore
+        // is the source of truth (App Group UserDefaults); the SDK Client
+        // echoes it for status-JSON parity with the desktop daemon.
+        client?.setMode(mode.rawValue)
+
+        // Init logger to a file inside the App Group container so logs
+        // survive the extension being torn down.
+        let logURL = AppGroup.containerURL?.appendingPathComponent("packet-tunnel.log")
+        var logErr: NSError?
+        GoatClientSDKInitializeLog("info", logURL?.path ?? "", &logErr)
+
+        // Hand back control to NE — startTunnel must return promptly. The
+        // actual Run() call is blocking and lives on a detached Task.
+        completionHandler(nil)
+
+        clientTask = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let client = client else { return }
+
+            // FD extraction: NEPacketTunnelProvider gives us packetFlow but
+            // not the raw utun FD. The wireguard-go iOS port locates the FD
+            // by walking open file descriptors and matching the utun control
+            // socket name (see netbird client/iface/device/device_ios.go for
+            // the documented dance). Until that helper is ported into the
+            // Swift shell, we pass -1 — RunOnMobile will reject it with
+            // "tunnel: invalid fd -1" so the surfaced error is clear.
+            let fd: Int32 = -1
+            let ifaceName = "utun-goat"
+
+            // gomobile binds Go funcs returning `error` to Objective-C
+            // methods of shape `-(BOOL)…error:NSError**`, which Swift
+            // auto-bridges to a throwing call. Use try/catch rather than the
+            // old explicit error: parameter style.
+            var runErr: NSError?
+            do {
+                try client.run(fd, interfaceName: ifaceName, envList: nil)
+                os_log("GoatClientSDK.Run returned cleanly", log: Self.log, type: .info)
+            } catch let err as NSError {
+                runErr = err
+                os_log("GoatClientSDK.Run returned: %{public}@", log: Self.log, type: .error, String(describing: err))
+            }
+
+            // Run() returned (either Stop was called, or it errored). Tell NE
+            // the tunnel is gone so the system tears down.
+            await self?.cancelTunnelWithError(runErr)
+        }
+        #else
+        // No GoatClientSDK in this build (e.g. xcframework not yet generated).
+        // Tell NE the tunnel is up so the UI shows "connected" — useful for
+        // pure-Swift Simulator builds while the gomobile pipeline is being
+        // wired. The actual data path is a no-op.
+        os_log("startTunnel: GoatClientSDK not linked; tunnel is a no-op (Simulator dry-run mode), mode=%{public}@",
+               log: Self.log, type: .default, mode.rawValue)
+        completionHandler(nil)
+        #endif
+    }
+}
+
+#if canImport(UIKit)
+import UIKit
+#endif

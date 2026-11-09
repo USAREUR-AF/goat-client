@@ -1,0 +1,23 @@
+# Pinned enrollment-bundle signing keys (ECDSA P-256) compiled into goat-client.
+#
+# The public tree pins no key, so a public build accepts no signed bundle.
+# A deployment lists the public keys of the CAs that sign its enrollment
+# bundles here and regenerates embedded.go before building:
+#   go generate ./internal/trustanchor
+#   # or
+#   go run ./cmd/anchorgen -in internal/trustanchor/anchors.yaml -out internal/trustanchor/embedded.go
+#
+# Schema:
+#   anchors:
+#     - name:           short label, used in audit logs (must be unique)
+#       issuer:         CA-id string the CA stamps into bundle.CAID
+#       valid_from:     RFC3339 UTC; before this, Verify ignores the anchor
+#       valid_until:    RFC3339 UTC; after this, Verify ignores the anchor
+#       public_key_pem: PKIX SubjectPublicKeyInfo PEM (BEGIN PUBLIC KEY)
+#                       OR X.509 CERTIFICATE PEM (BEGIN CERTIFICATE)
+#                       — must carry an ECDSA P-256 key
+#
+# Rotation: list the old and new anchors with overlapping windows, then drop
+# the old one after the cutover and regenerate.
+
+anchors: []

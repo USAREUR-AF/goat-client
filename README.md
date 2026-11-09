@@ -1,0 +1,188 @@
+<p align="center">
+  <img src="internal/ui/assets/goat-logo.svg" alt="goat" width="360">
+</p>
+
+# goat-client
+
+Cross-platform daemon + GUI for goat **wg-cp0 silent control plane** onboarding.
+
+Consumes an [offline-CA-signed CBOR bundle](https://github.com/USAREUR-AF/goatcore/blob/main/docs/design/offline-enrollment.md) and brings up and maintains the wg-cp0 outer WireGuard tunnel, replacing the command-line ceremony (`bundle-create` on the operator side, `wg-cp0-bundle-apply` on the device) with a cross-platform app.
+
+## Status
+
+Three operating modes on every platform: `wg-cp0-only` (the outer tunnel alone), `netbird-only` (the inner mesh alone, through the embedded NetBird client from [USAREUR-AF/netbird](https://github.com/USAREUR-AF/netbird)) and `combined` (both tunnels in one process). The mode is chosen at install and can be switched at runtime. Release notes are in [CHANGELOG.md](CHANGELOG.md).
+
+## Platforms
+
+- Linux (amd64 / arm64) — Fyne desktop GUI + Go daemon (kernel WireGuard or wireguard-go)
+- macOS (amd64 / arm64) — Fyne desktop GUI + Go daemon (wireguard-go)
+- Windows (amd64 / arm64) — Fyne desktop GUI + Go daemon (wireguard.dll)
+- iOS / iPadOS — gomobile-built daemon framework + Swift NEPacketTunnelProvider shell
+- Android — gomobile-built daemon AAR + Kotlin VpnService shell
+
+## Install
+
+Pick the package for your OS from the [releases page](https://github.com/USAREUR-AF/goat-client/releases). Set `VERSION` to the release you want; the examples use the shell variable. All assets are cosign-signed; see [Verifying release artifacts](#verifying-release-artifacts) below.
+
+### Debian / Ubuntu (.deb)
+
+```bash
+curl -fL -o goat-client.deb \
+  https://github.com/USAREUR-AF/goat-client/releases/download/goat-client-v${VERSION}/goat-client_${VERSION}_amd64.deb
+sudo dpkg -i goat-client.deb
+sudo systemctl status goat-clientd        # daemon auto-starts
+```
+
+### Fedora / RHEL (.rpm)
+
+```bash
+curl -fL -o goat-client.rpm \
+  https://github.com/USAREUR-AF/goat-client/releases/download/goat-client-v${VERSION}/goat-client-${VERSION}-1.x86_64.rpm
+sudo dnf install ./goat-client.rpm
+sudo systemctl status goat-clientd        # daemon auto-starts
+```
+
+### macOS (.dmg)
+
+```bash
+curl -fL -o goat-client.dmg \
+  https://github.com/USAREUR-AF/goat-client/releases/download/goat-client-v${VERSION}/goat-client-${VERSION}-arm64.dmg
+hdiutil attach goat-client.dmg
+sudo installer -pkg "/Volumes/goat-client/goat-client.pkg" -target /
+hdiutil detach "/Volumes/goat-client"
+sudo launchctl print system/io.dlf-dds.goat-clientd | head   # daemon auto-starts  (oss-allow: existing app identifier)
+```
+
+Engineering builds ship unsigned. If Gatekeeper refuses to launch the GUI, clear the quarantine attribute first: `xattr -d com.apple.quarantine /Applications/goat-client.app`.
+
+### Windows (.msi)
+
+```powershell
+Invoke-WebRequest -OutFile goat-client.msi `
+  https://github.com/USAREUR-AF/goat-client/releases/download/goat-client-v$env:VERSION/goat-client-$env:VERSION-amd64.msi
+msiexec /i goat-client.msi /qn
+Get-Service goat-clientd                  # daemon auto-starts
+```
+
+Engineering builds ship without an Authenticode signature; SmartScreen will warn on first launch.
+
+## First run
+
+After install, the daemon (`goat-clientd`) is running but inactive — it has no bundle. Two ways to give it one:
+
+1. **GUI bundle import (recommended).** Launch the goat-client app from your application menu / Start Menu / `/Applications`. The window opens to a bundle-import dialog; drag-drop the `bundle.cbor` your operator gave you, or use the file picker. The dialog renders the issued-to / site / expires / peer pubkey / endpoints from the parsed CBOR; click **Apply** to hand it to the daemon. The system tray icon turns amber while the tunnel comes up, then green once handshake completes.
+
+2. **Manual drop.** Place `bundle.cbor` at the platform-specific bundle directory and restart the daemon:
+
+   | Platform | Bundle path                                              | Restart command                                              |
+   |----------|----------------------------------------------------------|--------------------------------------------------------------|
+   | Linux    | `/var/lib/goat-client/bundle.cbor`                       | `sudo systemctl restart goat-clientd`                        |
+   | macOS    | `/Library/Application Support/goat-client/bundle.cbor`   | `sudo launchctl kickstart -k system/io.dlf-dds.goat-clientd` | <!-- oss-allow: existing app identifier -->
+   | Windows  | `%ProgramData%\goat-client\bundle.cbor`                  | `Restart-Service goat-clientd`                               |
+
+The daemon writes status + handshake details to its log directory (`/var/log/goat-client/` on Linux/macOS, `%ProgramData%\goat-client\logs\` on Windows). See [docs/quickstart.md](docs/quickstart.md) for the operator → end-user end-to-end walk and [docs/troubleshooting.md](docs/troubleshooting.md) when something doesn't come up.
+
+## CLI (`goat-client`)
+
+The same `goat-client` binary that launches the GUI is also a command-line tool — handy for headless boxes (no GUI), ops scripts, and quick status checks. It talks to the running daemon over the local IPC socket and exits.
+
+```bash
+goat-client status        # mode, tunnel state, bundle metadata, byte counters, last handshake
+goat-client connect       # bring the active mode's tunnel(s) up (idempotent)
+goat-client disconnect    # tear them down
+goat-client getmode       # print the active v0.2 mode
+goat-client setmode <wg-cp0-only|netbird-only|combined>   # switch mode at runtime
+```
+
+On a headless box, import the bundle with the daemon's one-shot mode, then drive it from the shell:
+
+```bash
+sudo goat-clientd --import-bundle alice-bundle.cbor   # validate + persist, then exit
+goat-client status                                    # inspect; daemon auto-connects on (re)start
+```
+
+Full subcommand reference, output fields, exit codes, and `--daemon-addr` override: **[docs/cli.md](docs/cli.md)**.
+
+## Verifying release artifacts
+
+Every release archive is cosign-signed (keyless / OIDC, GitHub Actions identity). Verify before installing:
+
+```bash
+# Fetch the artifact, the signature, and the certificate.
+ASSET=goat-client_${VERSION}_amd64.deb
+BASE=https://github.com/USAREUR-AF/goat-client/releases/download/goat-client-v${VERSION}
+curl -fLO "$BASE/$ASSET"
+curl -fLO "$BASE/$ASSET.sig"
+curl -fLO "$BASE/$ASSET.pem"
+
+# Verify (cosign 2.x).
+cosign verify-blob \
+  --certificate "$ASSET.pem" \
+  --signature   "$ASSET.sig" \
+  --certificate-identity-regexp 'https://github\.com/USAREUR-AF/goat-client/\.github/workflows/release\.yml@refs/tags/goat-client-v.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  "$ASSET"
+```
+
+The aggregate `SHA256SUMS` file (also signed) lets you verify all six desktop archives in one shot:
+
+```bash
+curl -fLO "$BASE/SHA256SUMS"
+curl -fLO "$BASE/SHA256SUMS.sig"
+curl -fLO "$BASE/SHA256SUMS.pem"
+cosign verify-blob \
+  --certificate SHA256SUMS.pem --signature SHA256SUMS.sig \
+  --certificate-identity-regexp 'https://github\.com/USAREUR-AF/goat-client/\.github/workflows/release\.yml@refs/tags/goat-client-v.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  SHA256SUMS
+sha256sum -c SHA256SUMS    # verifies whichever archives are present locally
+```
+
+## License
+
+Apache 2.0 (see [LICENSE](LICENSE)). Forked from netbird's BSD-3-Clause-licensed `client/` tree at upstream commit `3fc5a8d4a1fe308ff1068764a09b90b0859ab8fe` (see [NOTICE](NOTICE) and [LICENSE.netbird-bsd3](LICENSE.netbird-bsd3) for attribution + license preservation).
+
+## Build from source
+
+```bash
+go build ./...    # daemon + GUI, all six platforms compile clean
+```
+
+A public build trusts the system roots only and pins no enrollment-bundle signing key. A deployment that uses a private CA adds its root certificate to [`internal/ipc/grpc/trust/`](internal/ipc/grpc/trust/README.md) and its bundle-signing public keys to [`internal/trustanchor/anchors.yaml`](internal/trustanchor/anchors.yaml) (then `go generate ./internal/trustanchor`) before building.
+
+Cross-compile to any of the six desktop targets via `GOOS` / `GOARCH` — see [.github/workflows/release.yml](.github/workflows/release.yml) for the canonical flag set (`-trimpath -buildvcs=false`). The release matrix runs on per-OS native runners with `CGO_ENABLED=1` so the Fyne GUI links against each platform's native graphics deps; a daemon-only build works with `CGO_ENABLED=0`.
+
+### iOS
+
+iOS shell + gomobile facade live under [`mobile/ios/`](mobile/ios/README.md). Build the xcframework + Xcode project for iOS Simulator (no Apple Developer Program needed):
+
+```bash
+./mobile/ios/scripts/build-xcframework.sh   # gomobile bind → mobile/ios/GoatClientSDK.xcframework
+( cd mobile/ios/Shell && xcodegen generate ) # project.yml → GoatClient.xcodeproj
+xcodebuild -project mobile/ios/Shell/GoatClient.xcodeproj \
+  -scheme GoatClient -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+### Android
+
+```bash
+( cd mobile/android/GoatClientSDK && \
+  gomobile bind -target=android -androidapi=24 \
+    -javapkg=io.dlf_dds.goat_client.gomobile -o ../Shell/app/libs/goat-client.aar . )
+( cd mobile/android/Shell && ./gradlew :app:assembleDebug )   # APK at app/build/outputs/apk/
+```
+
+## Documentation
+
+- [`docs/quickstart.md`](docs/quickstart.md) — operator → end-user → tunnel up.
+- [`docs/cli.md`](docs/cli.md) — the `goat-client` CLI: status / connect / disconnect / getmode / setmode, headless bundle import, exit codes.
+- [`docs/troubleshooting.md`](docs/troubleshooting.md) — daemon won't start, bundle rejected, DNS broken.
+- [`docs/qr-bundle.md`](docs/qr-bundle.md) — QR-encoded bundle codec for the mobile import flow.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — branch / commit / PR conventions.
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting.
+
+Design and decision records live in [USAREUR-AF/goatcore](https://github.com/USAREUR-AF/goatcore):
+
+- [`docs/design/goat-client.md`](https://github.com/USAREUR-AF/goatcore/blob/main/docs/design/goat-client.md)
+- [`docs/design/goat-client-distribution.md`](https://github.com/USAREUR-AF/goatcore/blob/main/docs/design/goat-client-distribution.md)
+- [`docs/adr/0840-goat-client-cross-platform-daemon-gui.md`](https://github.com/USAREUR-AF/goatcore/blob/main/docs/adr/0840-goat-client-cross-platform-daemon-gui.md)

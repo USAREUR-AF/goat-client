@@ -1,0 +1,62 @@
+name: integration
+
+# Bundle-import + IPC integration test, Tier-A.
+#
+# The Tier-B realprotocol test needs a live wg-cp0 endpoint and bundle,
+# so CI only compiles it and confirms it skips (see
+# tests/integration/README.md to run it locally).
+#
+# Distinct from `ci.yml` (always-fast vet/test/build gate)
+# and `release.yml` (six-target cross-compile + signing) — this
+# workflow only adds the integration-tag class, which:
+#   1. builds cmd/goat-clientd (CGO_ENABLED=0; in-test, lazily cached);
+#   2. mints a fresh Ed25519 trust root + signs a CBOR bundle in the
+#      test process (no test fixtures committed);
+#   3. spawns the daemon on a temp Unix socket;
+#   4. drives ImportBundle / GetStatus / GetDiagnostics + the
+#      no-bundle Connect-rejection path.
+# Connect post-import (real wg-cp0 bring-up) is the realprotocol-tag
+# sibling's job — wireguard-go user-mode needs CAP_NET_ADMIN / TUN
+# device which ubuntu-latest doesn't grant default.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tier-a:
+    name: integration (Tier-A — IPC contract end-to-end)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: go test -tags integration
+        run: go test -tags integration -count=1 -v -timeout 2m ./tests/integration/...
+
+      - name: go test -tags realprotocol (compile + skip behavior)
+        # Build-tag compiles cleanly; tests skip when env unset, which is
+        # the expected state in CI (no live endpoint is configured).
+        run: go test -tags realprotocol -count=1 -v -run=TestRealProtocol ./tests/integration/...
+
+      - name: go test -tags mobile_realprotocol (in-process mobile-engine handshake)
+        # Hermetic real-protocol test for the mobile-tunnel wireup:
+        # stands up two in-process wireguard-go devices on netstack tuns,
+        # signs + verifies an EnrollmentBundle through the real import
+        # pipeline, drives runMobileEngine end-to-end, asserts handshake
+        # completes via ICMP-echo round-trip. No env / no lab needed —
+        # always runs on every PR + push.
+        run: go test -tags mobile_realprotocol -count=1 -v -run=TestMobile -timeout 60s ./tests/integration/...

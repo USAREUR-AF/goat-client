@@ -1,0 +1,129 @@
+name: ci
+
+# Tier-A always-fast gate. Runs on every PR
+# and every push to main. Surface: vet, test, build — single ubuntu-latest
+# runner, no cross-compile, no mobile, no integration. The release.yml
+# workflow handles the six-target build matrix + signing.
+#
+# Keep this workflow minimal. Anything heavier (golangci-lint strict
+# config, integration tests, real-protocol smoke) belongs in a sibling
+# workflow that doesn't gate the PR feedback loop.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: vet + test + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Install Fyne build dependencies (CGO/OpenGL/X11)
+        # The cmd/goat-client Fyne GUI imports github.com/go-gl/gl +
+        # github.com/go-gl/glfw, both of which need CGO + Mesa GL +
+        # X11 dev headers at compile time. Without these the
+        # `go vet ./...` / `go build ./...` steps fail with
+        # `pkg-config: gl not found` and `X11/Xlib.h: No such file`.
+        # This matches the standard Fyne dep list documented at
+        # https://docs.fyne.io/started/. Daemon-side code is CGO-free,
+        # but PR-gating CI compiles the whole module.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev xorg-dev libxkbcommon-dev pkg-config
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test -race -count=1 ./...
+      - name: go build
+        run: go build ./...
+
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Install Fyne build dependencies (CGO/OpenGL/X11)
+        # Same rationale as the `fast` job: golangci-lint compiles
+        # transitively through internal/ui's Fyne imports.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev xorg-dev libxkbcommon-dev pkg-config
+      - name: golangci-lint
+        # Strict lint discipline. Config at
+        # .golangci.yaml — adapted from netbird's strict config (BSD
+        # 3-Clause). Enabled linters: errcheck, gosec, govet, revive,
+        # staticcheck, unused, plus 13 others. See .golangci.yaml
+        # header for full rationale.
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.12.2
+
+  v02-cross-compile:
+    name: v0.2 packages cross-compile (${{ matrix.goos }}/${{ matrix.goarch }})
+    # Verdict-gate item 1: the v0.2 library packages
+    # (innermesh, mode, bundle, daemon, ipc + cmd/goat-clientd entry
+    # point) must compile cleanly for the six desktop targets on
+    # every PR. Today's PR-gating ci.yml only exercises ubuntu-latest;
+    # the six-target matrix lives in release.yml and runs only on tag
+    # push — too late to catch a cross-platform regression before
+    # merge.
+    #
+    # Scope: pure-Go v0.2 packages only. CGO_ENABLED=0, so a stock
+    # setup-go on ubuntu-latest is sufficient — no per-OS
+    # cross-toolchain images needed. The full goat-client Fyne binary
+    # (with CGO+GL deps) stays in release.yml; only fix-as-they-land
+    # round-trips through this PR gate. Mobile targets (ios/arm64,
+    # android/{arm64,amd64}) are covered by mobile.yml's gomobile bind
+    # smoke, which transitively pulls these packages in via the
+    # GoatClientSDK entry points.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: darwin,  goarch: amd64 }
+          - { goos: darwin,  goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+          - { goos: windows, goarch: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: go build (v0.2 packages, CGO off)
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          go build ./internal/innermesh/... \
+                   ./internal/mode/... \
+                   ./internal/bundle/... \
+                   ./internal/daemon/... \
+                   ./internal/ipc/... \
+                   ./cmd/goat-clientd/...

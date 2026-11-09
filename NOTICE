@@ -1,0 +1,49 @@
+goat-client
+Copyright 2026 U.S. Federal Government (in countries where recognized)
+
+Portions of this work written by U.S. Federal government employees within the
+scope of their federal employment are not subject to copyright protection in the
+United States (17 U.S.C. 105) and are in the public domain there. In countries
+where copyright protection is available, those portions are released under the
+Apache License, Version 2.0 (see LICENSE). Merged contributions from private
+contributors are released under the same License.
+
+This product includes software derived from NetBird
+(https://github.com/netbirdio/netbird), licensed under the BSD 3-Clause
+License (see LICENSE.netbird-bsd3 for the full text). The following parts were
+adapted from upstream NetBird:
+
+  - internal/tunnel/         WireGuard interface management (per platform)
+  - internal/tunnel/dns/     Per-OS DNS configuration (systemd-resolved, scutil,
+                             NRPT, NEDNSSettings)
+  - mobile/ios/GoatClientSDK/      iOS gomobile facade (NetworkExtension bridge)
+  - mobile/android/GoatClientSDK/  Android gomobile facade (VpnService bridge)
+  - internal/ui/             Fyne desktop GUI, pattern-derived only (systray
+                             parent process + Fyne window child process,
+                             cross-platform notifier interface). No source
+                             files copied verbatim; no NetBird icon assets.
+  - internal/ipc/grpc/       gRPC dialer (ServerName port strip)
+  - internal/ipc/            daemon IPC (reshaped; mesh RPCs removed)
+
+Upstream NetBird:         https://github.com/netbirdio/netbird
+Upstream commit pinned:   3fc5a8d4a1fe308ff1068764a09b90b0859ab8fe
+NetBird fork used:        https://github.com/USAREUR-AF/netbird
+                          (branch goat/extra-root-ca: ServerName port strip,
+                          and grpc.ExtraRootCAsPEM, which this client sets)
+
+Not carried from upstream:
+  - OAuth / SSO / device-flow sign-in (replaced by bundle import)
+  - the NetBird management, signal, peer and relay clients in the
+    single-peer wg-cp0 mode (the inner mesh uses the fork's embedded client)
+  - the embedded SSH server
+  - mesh ACL firewall pieces (platform detection kept)
+
+----
+
+Brand assets
+------------
+
+The goat-client mark, a green ram-head silhouette, and all rendered sizes
+(PNG / ICO / ICNS) under internal/ui/assets/ are distributed under the same
+Apache-2.0 license as the rest of this repository. The mark is regenerated
+from internal/ui/assets/goat-logo.svg via scripts/gen-icons.sh.
