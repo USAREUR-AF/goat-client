@@ -40,14 +40,18 @@ var extraRootsPEM = loadExtraRoots()
 func loadExtraRoots() []byte {
 	var out []byte
 	_ = fs.WalkDir(trustFS, "trust", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || path.Ext(p) != ".pem" {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || path.Ext(p) != ".pem" {
 			return nil
 		}
-		b, readErr := trustFS.ReadFile(p)
-		if readErr == nil {
-			out = append(out, b...)
-			out = append(out, '\n')
+		b, err := trustFS.ReadFile(p)
+		if err != nil {
+			return err
 		}
+		out = append(out, b...)
+		out = append(out, '\n')
 		return nil
 	})
 	return out
