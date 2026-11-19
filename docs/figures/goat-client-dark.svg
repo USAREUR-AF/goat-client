@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 448" width="880" height="448" role="img" aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, &apos;Noto Sans&apos;, Helvetica, Arial, sans-serif">
+<title id="t">One bundle file brings up the outer tunnel, the mesh, or both</title>
+<desc id="d">A bundle.cbor signed by an offline CA is dropped on the goat-client window; the window hands it to the goat-clientd daemon, which, in the mode chosen at install and switchable at runtime, brings up the wg-cp0 outer WireGuard tunnel, the inner NetBird mesh through the embedded client, or both in one process. The tray icon turns amber while a tunnel comes up and green once the handshake completes. It runs on Linux, macOS and Windows, and on iOS, iPadOS and Android.</desc>
+<defs><marker id="arrow-line" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#7d8590"/></marker><marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4493f8"/></marker><marker id="arrow-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3fb950"/></marker><marker id="arrow-crit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#f85149"/></marker></defs>
+<rect width="100%" height="100%" rx="12" fill="#0d1117"/>
+<text x="24" y="38" font-size="20" fill="#e6edf3" text-anchor="start" font-weight="600">One bundle file brings up the outer tunnel, the mesh, or both</text>
+<text x="24" y="62" font-size="14" fill="#9198a1" text-anchor="start">Drop the bundle your operator gave you on the window; the daemon does the rest.</text>
+<rect x="24" y="132" width="170" height="116" rx="8" fill="#161b22" stroke="#3d444d" stroke-width="1.5"/>
+<text x="38" y="158" font-size="15" fill="#e6edf3" text-anchor="start" font-weight="600">bundle.cbor</text>
+<text x="38" y="182" font-size="14" fill="#e6edf3" text-anchor="start">signed by an offline</text>
+<text x="38" y="202" font-size="14" fill="#e6edf3" text-anchor="start">CA, from your</text>
+<text x="38" y="222" font-size="14" fill="#e6edf3" text-anchor="start">operator</text>
+<rect x="214" y="92" width="384" height="248" rx="10" fill="#0d1117" stroke="#7d8590" stroke-width="1.5"/>
+<text x="230" y="118" font-size="15" fill="#e6edf3" text-anchor="start" font-weight="600">goat-client</text>
+<rect x="230" y="132" width="352" height="74" rx="8" fill="#161b22" stroke="#3d444d" stroke-width="1.5"/>
+<text x="244" y="158" font-size="15" fill="#e6edf3" text-anchor="start" font-weight="600">Window and tray</text>
+<text x="244" y="182" font-size="14" fill="#e6edf3" text-anchor="start">drop to import; tray amber, then green</text>
+<rect x="230" y="230" width="352" height="96" rx="8" fill="#132c4c" stroke="#4493f8" stroke-width="1.5"/>
+<text x="244" y="256" font-size="15" fill="#e6edf3" text-anchor="start" font-weight="600">goat-clientd daemon</text>
+<text x="244" y="280" font-size="14" fill="#e6edf3" text-anchor="start">mode, switchable at runtime:</text>
+<rect x="244" y="292" width="105.2" height="22" rx="11" fill="#0d1117" stroke="#4493f8" stroke-width="1"/>
+<text x="296.6" y="307" font-size="13" fill="#e6edf3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace">wg-cp0-only</text>
+<rect x="357.2" y="292" width="113.2" height="22" rx="11" fill="#0d1117" stroke="#4493f8" stroke-width="1"/>
+<text x="413.8" y="307" font-size="13" fill="#e6edf3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace">netbird-only</text>
+<rect x="478.4" y="292" width="81.4" height="22" rx="11" fill="#0d1117" stroke="#4493f8" stroke-width="1"/>
+<text x="519.1" y="307" font-size="13" fill="#e6edf3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace">combined</text>
+<line x1="406" y1="206" x2="406" y2="228" stroke="#7d8590" stroke-width="1.5" marker-end="url(#arrow-line)"/>
+<line x1="194" y1="190" x2="228" y2="190" stroke="#7d8590" stroke-width="1.5" marker-end="url(#arrow-line)"/>
+<rect x="634" y="112" width="222" height="92" rx="8" fill="#12261e" stroke="#3fb950" stroke-width="1.5"/>
+<text x="648" y="138" font-size="15" fill="#e6edf3" text-anchor="start" font-weight="600">wg-cp0</text>
+<text x="648" y="162" font-size="14" fill="#e6edf3" text-anchor="start">the outer WireGuard tunnel</text>
+<rect x="634" y="232" width="222" height="92" rx="8" fill="#12261e" stroke="#3fb950" stroke-width="1.5"/>
+<text x="648" y="258" font-size="15" fill="#e6edf3" text-anchor="start" font-weight="600">NetBird mesh</text>
+<text x="648" y="282" font-size="14" fill="#e6edf3" text-anchor="start">the inner mesh, through the</text>
+<text x="648" y="302" font-size="14" fill="#e6edf3" text-anchor="start">embedded client</text>
+<line x1="582" y1="252" x2="632" y2="162" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow-good)"/>
+<line x1="582" y1="278" x2="632" y2="278" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow-good)"/>
+<text x="24" y="366" font-size="14" fill="#9198a1" text-anchor="start">Runs on</text>
+<rect x="24" y="378" width="156.8" height="56" rx="8" fill="#161b22" stroke="#3d444d" stroke-width="1"/>
+<text x="36" y="402" font-size="14" fill="#e6edf3" text-anchor="start" font-weight="600">Linux</text>
+<text x="36" y="422" font-size="13" fill="#9198a1" text-anchor="start">Fyne GUI + Go daemon</text>
+<rect x="192.8" y="378" width="156.8" height="56" rx="8" fill="#161b22" stroke="#3d444d" stroke-width="1"/>
+<text x="204.8" y="402" font-size="14" fill="#e6edf3" text-anchor="start" font-weight="600">macOS</text>
+<text x="204.8" y="422" font-size="13" fill="#9198a1" text-anchor="start">Fyne GUI + Go daemon</text>
+<rect x="361.6" y="378" width="156.8" height="56" rx="8" fill="#161b22" stroke="#3d444d" stroke-width="1"/>
+<text x="373.6" y="402" font-size="14" fill="#e6edf3" text-anchor="start" font-weight="600">Windows</text>
+<text x="373.6" y="422" font-size="13" fill="#9198a1" text-anchor="start">Fyne GUI + Go daemon</text>
+<rect x="530.4" y="378" width="156.8" height="56" rx="8" fill="#161b22" stroke="#3d444d" stroke-width="1"/>
+<text x="542.4" y="402" font-size="14" fill="#e6edf3" text-anchor="start" font-weight="600">iOS / iPadOS</text>
+<text x="542.4" y="422" font-size="13" fill="#9198a1" text-anchor="start">Swift + gomobile</text>
+<rect x="699.2" y="378" width="156.8" height="56" rx="8" fill="#161b22" stroke="#3d444d" stroke-width="1"/>
+<text x="711.2" y="402" font-size="14" fill="#e6edf3" text-anchor="start" font-weight="600">Android</text>
+<text x="711.2" y="422" font-size="13" fill="#9198a1" text-anchor="start">Kotlin + gomobile</text>
+</svg>

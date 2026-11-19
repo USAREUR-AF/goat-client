@@ -1,8 +1,9 @@
-<p align="center">
-  <img src="internal/ui/assets/goat-logo.svg" alt="goat" width="360">
-</p>
-
 # goat-client
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/goat-client-dark.svg">
+  <img src="docs/figures/goat-client-light.svg" width="760" alt="A bundle.cbor signed by an offline CA is dropped on the goat-client window; the goat-clientd daemon, in the mode chosen at install and switchable at runtime (wg-cp0-only, netbird-only or combined), brings up the wg-cp0 outer WireGuard tunnel, the inner NetBird mesh through the embedded client, or both; it runs on Linux, macOS, Windows, iOS, iPadOS and Android.">
+</picture>
 
 Cross-platform daemon + GUI for goat **wg-cp0 silent control plane** onboarding.
 
