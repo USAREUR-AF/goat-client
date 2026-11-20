@@ -1,0 +1,10 @@
+=== RUN   TestMobile_RealProtocolHandshake
+    mobile_realprotocol_test.go:192: trustanchor verify ok: anchor=mobile-realprotocol-test-ca
+    mobile_realprotocol_test.go:204: client tunnel.Config: iface=wg-cp0-test local=100.127.0.100/32 peer.endpoint=127.0.0.1:52943 peer.allowed=[100.127.0.2/32]
+2026/11/20 09:00:52 tunnel: wg-cp0-test up
+    mobile_realprotocol_test.go:252: ping attempt 1: read icmp reply: i/o timeout
+    mobile_realprotocol_test.go:252: ping attempt 2 succeeded
+    mobile_realprotocol_test.go:260: ping client -> endpoint succeeded — wg handshake confirmed end-to-end
+--- PASS: TestMobile_RealProtocolHandshake (0.50s)
+PASS
+ok  	github.com/USAREUR-AF/goat-client/tests/integration	1.020s

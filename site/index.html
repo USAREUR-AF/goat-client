@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>goat-client</title>
+<meta name="description" content="goat-client: one signed bundle file brings up the goat tunnels on Linux, macOS, Windows, iOS, iPadOS and Android. A daemon, a GUI and a CLI.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #f3f6fa; --bg2: #e6edf6; --panel: #ffffff; --ink: #0f1b2d; --quiet: #4b5a6e; --rule: #cfd8e3;
+  --accent: #1f5fd6; --on-accent: #ffffff; --accent-ink: #1a55c2; --ok: #15803d; --wait: #b45309; --bad: #b91c1c;
+  --term: #0f1b2d; --term-ink: #dde6f2; --term-dim: #8394ab; --term-cmd: #8fd3ff; --bgcode: rgba(15, 27, 45, .07);
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a111d; --bg2: #0f1a2b; --panel: #111c2e; --ink: #e3ebf6; --quiet: #9db0c8; --rule: #24344c;
+    --accent: #6aa3ff; --on-accent: #06152e; --accent-ink: #8ab8ff; --ok: #4ade80; --wait: #fbbf24; --bad: #f87171;
+    --term: #060c16; --bgcode: rgba(138, 184, 255, .07);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 var(--sans); }
+a { color: var(--accent-ink); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--wait); outline-offset: 3px; }
+code, pre { font-family: var(--mono); }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; width: 100%; }
+
+.top { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font: 700 17px var(--mono); }
+.brand svg { width: 28px; height: 28px; }
+.top nav { display: flex; gap: 26px; font: 15px var(--mono); }
+.top nav a { color: var(--ink); text-decoration: none; }
+.top nav a:hover { color: var(--accent-ink); }
+
+.hero { position: relative; min-height: max(660px, 88vh); display: flex; flex-direction: column; overflow: hidden;
+  background: linear-gradient(160deg, var(--bg) 40%, var(--bg2)); }
+.bgcode { position: absolute; top: 76px; left: 47%; margin: 0; font: 15px/1.55 var(--mono); color: var(--bgcode); white-space: pre; pointer-events: none; user-select: none; }
+.hero-main { position: relative; z-index: 1; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 44px; align-items: center; padding-top: 84px; padding-bottom: 24px; }
+.prompt { font: 600 15px var(--mono); color: var(--accent-ink); margin: 0 0 4px; }
+.cursor { display: inline-block; width: .6em; height: 1.05em; vertical-align: -3px; background: var(--ok); margin-left: 6px; animation: blink 1.06s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.wordmark { font: 900 84px/1 var(--mono); letter-spacing: -.045em; margin: 0; }
+.tagline { font: 700 23px/1.35 var(--sans); color: var(--accent-ink); margin: 14px 0 10px; }
+.lede { color: var(--quiet); margin: 0 0 24px; max-width: 34em; }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 8px; border: 1.5px solid var(--rule);
+  color: var(--ink); background: var(--panel); text-decoration: none; font: 700 15px var(--sans); }
+.btn svg { width: 18px; height: 18px; }
+.btn.star { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn:hover { border-color: var(--accent); }
+.cmd { display: flex; align-items: stretch; border: 1.5px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--term); color: var(--term-ink); max-width: 600px; }
+.cmd pre { flex: 1; margin: 0; padding: 12px 14px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.cmd .p, .term .p { color: var(--term-cmd); user-select: none; }
+.copy { border: 0; border-left: 1.5px solid #2a3a52; background: transparent; color: var(--term-cmd); font: 700 13px var(--mono); padding: 0 14px; cursor: pointer; }
+.cmd-note { font-size: 14px; color: var(--quiet); margin: 8px 0 0; }
+
+/* the replay */
+.modes { display: flex; gap: 6px; margin: 0 0 10px; font: 600 12.5px var(--mono); flex-wrap: wrap; align-items: center; }
+.modes .lbl { color: var(--quiet); margin-right: 4px; }
+.modes span.m { padding: 3px 10px; border-radius: 999px; border: 1.5px solid var(--rule); color: var(--quiet); background: var(--panel); }
+.modes span.m.on { border-color: var(--accent); color: var(--accent-ink); }
+.win { border-radius: 10px; overflow: hidden; border: 1.5px solid var(--rule); box-shadow: 0 24px 50px -28px rgba(15, 27, 45, .45); background: var(--term); }
+.bar { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: #16243a; color: #c9d6e8; font: 600 12.5px var(--mono); }
+.bar i { width: 10px; height: 10px; border-radius: 50%; background: #2c3d57; display: inline-block; }
+.bar .title { flex: 1; }
+.lamp { display: inline-flex; align-items: center; gap: 7px; }
+.lamp b { width: 11px; height: 11px; border-radius: 50%; background: #5b6b82; box-shadow: 0 0 0 3px rgba(91, 107, 130, .25); }
+.lamp.wait b { background: #fbbf24; box-shadow: 0 0 0 3px rgba(251, 191, 36, .25); }
+.lamp.ok b { background: #4ade80; box-shadow: 0 0 0 3px rgba(74, 222, 128, .25); }
+.lamp.bad b { background: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, .25); }
+.term { margin: 0; padding: 12px 14px; color: var(--term-ink); font: 12.5px/1.55 var(--mono); height: 372px; overflow: hidden; white-space: pre-wrap; word-break: break-all; display: flex; flex-direction: column; justify-content: flex-end;
+  -webkit-mask-image: linear-gradient(transparent, #000 40px); mask-image: linear-gradient(transparent, #000 40px); }
+.term .c { color: var(--term-cmd); }
+.term .d { color: var(--term-dim); }
+.term .r { color: #f87171; }
+.term .g { color: #4ade80; }
+.term .sep { color: #fbbf24; }
+.caption { font-size: 13.5px; color: var(--quiet); margin: 10px 2px 0; line-height: 1.45; }
+.caption a { color: inherit; }
+
+.numbers { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1.5px solid var(--rule); border-radius: 10px; background: var(--panel); }
+.numbers > div { padding: 16px 20px; border-left: 1.5px solid var(--rule); }
+.numbers > div:first-child { border-left: 0; }
+.numbers b { display: block; font: 800 30px/1.1 var(--mono); color: var(--accent-ink); white-space: nowrap; }
+.numbers > div > span { display: block; font-weight: 700; font-size: 15px; }
+.numbers code { display: block; font-size: 12px; color: var(--quiet); margin-top: 4px; overflow-wrap: anywhere; }
+
+section { padding: 84px 0 0; }
+h2 { font: 800 32px/1.2 var(--mono); letter-spacing: -.02em; margin: 0 0 10px; }
+h3 { font: 700 19px/1.3 var(--sans); margin: 0 0 8px; }
+.sub { color: var(--quiet); margin: 0 0 30px; max-width: 46em; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.card { background: var(--panel); border: 1.5px solid var(--rule); border-radius: 10px; padding: 22px; }
+.card p { margin: 0; color: var(--quiet); font-size: 16px; }
+.card .k { font: 700 13px var(--mono); color: var(--accent-ink); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+figure { margin: 0; }
+figure img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--panel); }
+figcaption { font-size: 13.5px; color: var(--quiet); margin-top: 8px; }
+.block { background: var(--term); color: var(--term-ink); border-radius: 10px; padding: 16px 18px; font: 13.5px/1.6 var(--mono); overflow-x: auto; white-space: pre; margin: 0 0 12px; }
+.block .p { color: var(--term-cmd); user-select: none; }
+.block .d { color: var(--term-dim); }
+table { border-collapse: collapse; width: 100%; font-size: 15.5px; background: var(--panel); border: 1.5px solid var(--rule); }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 700 13px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--quiet); }
+tr:last-child td { border-bottom: 0; }
+td code { font-size: 14px; overflow-wrap: anywhere; }
+td:first-child code { white-space: nowrap; overflow-wrap: normal; }
+footer { margin-top: 96px; border-top: 1.5px solid var(--rule); padding: 28px 0 48px; color: var(--quiet); font-size: 15px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: space-between; }
+footer a { color: inherit; }
+.dark-only { display: none; }
+@media (prefers-color-scheme: dark) { .dark-only { display: block; } .light-only { display: none; } }
+
+@media (max-width: 980px) {
+  .hero-main { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .bgcode { left: 30%; }
+  .numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 24px; }
+  .numbers > div:nth-child(3) { border-left: 0; }
+  .numbers > div:nth-child(n+3) { border-top: 1.5px solid var(--rule); }
+  .cards, .two { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .wrap { padding: 0 16px; }
+  .top .wrap { height: 56px; }
+  .top nav { gap: 14px; font-size: 14px; }
+  .top nav .opt { display: none; }
+  .hero { min-height: 0; }
+  .hero-main { padding-top: 70px; }
+  .wordmark { font-size: 50px; }
+  .tagline { font-size: 18px; margin: 8px 0 6px; }
+  .lede { font-size: 15.5px; margin-bottom: 16px; }
+  .btn { padding: 9px 13px; font-size: 14px; }
+  .buttons { gap: 8px; margin-bottom: 12px; }
+  .cmd pre { font-size: 12.5px; padding: 10px 12px; }
+  .bgcode { font-size: 12px; left: 8%; opacity: .55; }
+  .numbers b { font-size: 24px; }
+  .numbers > div { padding: 12px 14px; }
+  .term { font-size: 11px; height: 330px; }
+  .bar .title { display: none; }
+  .bar .lamp { margin-left: auto; }
+  h2 { font-size: 26px; }
+  section { padding-top: 64px; }
+}
+@media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="goat-client, top of page">
+      <svg viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="5" width="24" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 11l3 2.5L7 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="13.5" r="3" fill="#16a34a"/></svg>
+      goat-client
+    </a>
+    <nav aria-label="Sections">
+      <a href="#what">What</a>
+      <a class="opt" href="#cli">CLI</a>
+      <a href="#build">Build</a>
+      <a href="https://github.com/USAREUR-AF/goat-client">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<div class="hero">
+<pre class="bgcode" aria-hidden="true">func (tr *TrustRoots) VerifyBundle(b *EnrollmentBundle) error {
+	if tr.Empty() {
+		return ErrNoTrustRoots
+	}
+	var lastErr error
+	for _, k := range tr.keys {
+		if err := b.Verify(k); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+	}
+	if lastErr != nil {
+		return fmt.Errorf("%w: %v", ErrUntrustedBundle, lastErr)
+	}
+	return ErrUntrustedBundle
+}</pre>
+
+  <div class="wrap hero-main">
+    <div>
+      <p class="prompt">&gt;_ goat-client status<span class="cursor" aria-hidden="true"></span></p>
+      <h1 class="wordmark">goat-client</h1>
+      <p class="tagline">One signed file, and the device is on the goat network.</p>
+      <p class="lede">A daemon, a desktop GUI and a command line for Linux, macOS and Windows, with iOS, iPadOS and Android shells. It takes a bundle signed by an offline certificate authority, checks the signature, and brings up the outer WireGuard tunnel, the inner NetBird mesh, or both.</p>
+      <div class="buttons">
+        <a class="btn star" href="https://github.com/USAREUR-AF/goat-client">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 2.8l2.8 5.8 6.4.9-4.6 4.5 1.1 6.3L12 17.3l-5.7 3 1.1-6.3-4.6-4.5 6.4-.9z"/></svg>
+          Star on GitHub
+        </a>
+        <a class="btn" href="#build">Build</a>
+        <a class="btn" href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/quickstart.md">Quickstart</a>
+        <a class="btn" href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/cli.md">CLI</a>
+      </div>
+      <div class="cmd">
+        <pre><span class="p">$ </span>git clone https://github.com/USAREUR-AF/goat-client &amp;&amp; cd goat-client
+<span class="p">$ </span>go build -o bin/ ./cmd/goat-client ./cmd/goat-clientd</pre>
+        <button class="copy" type="button" data-copy="git clone https://github.com/USAREUR-AF/goat-client && cd goat-client && go build -o bin/ ./cmd/goat-client ./cmd/goat-clientd">Copy</button>
+      </div>
+      <p class="cmd-note">Needs Go (the version in <code>go.mod</code>); the GUI also needs cgo and the platform's graphics libraries. No release is published yet.</p>
+    </div>
+
+    <div>
+      <div class="modes" aria-hidden="true"><span class="lbl">mode</span><span class="m" data-mode="wg-cp0-only">wg-cp0-only</span><span class="m" data-mode="netbird-only">netbird-only</span><span class="m" data-mode="combined">combined</span></div>
+      <div class="win" role="img" aria-label="A recorded terminal session, replayed. The real daemon refuses a tampered bundle (signature invalid), imports a correctly signed one, and the CLI reports mode combined with the bundle loaded. Then the real-protocol test brings a WireGuard tunnel up in one process and pings across it: handshake confirmed, test passed in 0.50 seconds.">
+        <div class="bar"><i></i><i></i><i></i><span class="title" id="phase">daemon + CLI, on a laptop</span><span class="lamp" id="lamp"><b></b><span id="lampt">no bundle</span></span></div>
+        <pre class="term" id="term" aria-hidden="true"></pre>
+      </div>
+      <p class="caption">Two real recordings, replayed: the daemon and CLI run unprivileged with a throwaway signing key (<a href="https://github.com/USAREUR-AF/goat-client/blob/main/site/captures/capture-cli.sh">capture-cli.sh</a>), then the hermetic real-protocol test that completes a WireGuard handshake in one process (<a href="https://github.com/USAREUR-AF/goat-client/blob/main/site/captures/capture-handshake.sh">capture-handshake.sh</a>).</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="numbers" aria-label="Measured">
+      <div><b><span data-n="bundle-bytes">556</span> B</b><span>signed bundle, the whole credential</span><code>cli-session.txt</code></div>
+      <div><b><span data-n="handshake-s">0.50</span> s</b><span>import, tunnel up, handshake</span><code>real-protocol test, handshake.txt</code></div>
+      <div><b data-n="desktop-targets">6</b><span>desktop builds, GUI and daemon</span><code>gui matrix, release.yml</code></div>
+      <div><b data-n="modes">3</b><span>modes, switchable at runtime</span><code>usage text, cmd/goat-client</code></div>
+    </div>
+  </div>
+</div>
+
+<section id="what">
+  <div class="wrap">
+    <h2>What it is</h2>
+    <p class="sub">goat-client replaces the command-line enrollment ceremony with an app. An operator mints one bundle per device with <code>bundle-create</code> from <a href="https://github.com/USAREUR-AF/goatcore">goatcore</a>; the person on the device drops it on the window, or a headless box imports it from the shell. The daemon verifies it against the pinned offline-CA root, keeps it, and brings the tunnels up.</p>
+    <div class="cards">
+      <div class="card"><div class="k">The bundle</div><h3>One CBOR file, signed offline</h3><p>Issued-to, site, validity window, the peer's WireGuard key and endpoints, signed with ECDSA P-256 by an offline CA. Hand it over by file, USB, or a QR code for an air-gapped device.</p></div>
+      <div class="card"><div class="k">The daemon</div><h3><code>goat-clientd</code></h3><p>A system service that holds the bundle, brings up and keeps the tunnels, and serves a local IPC socket. The packages register it to start on boot.</p></div>
+      <div class="card"><div class="k">The front ends</div><h3>GUI and CLI, one binary</h3><p><code>goat-client</code> with no arguments is the tray app and window; with a subcommand it is a CLI for headless boxes and scripts. Everything the GUI does, the CLI can do.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap two">
+    <figure>
+      <img class="light-only" src="assets/goat-client-light.svg" width="880" height="448" loading="lazy" alt="A bundle.cbor signed by an offline CA is dropped on the goat-client window; the goat-clientd daemon, in the mode chosen at install and switchable at runtime (wg-cp0-only, netbird-only or combined), brings up the wg-cp0 outer WireGuard tunnel, the inner NetBird mesh through the embedded client, or both; it runs on Linux, macOS, Windows, iOS, iPadOS and Android.">
+      <img class="dark-only" src="assets/goat-client-dark.svg" width="880" height="448" loading="lazy" alt="A bundle.cbor signed by an offline CA is dropped on the goat-client window; the goat-clientd daemon, in the mode chosen at install and switchable at runtime (wg-cp0-only, netbird-only or combined), brings up the wg-cp0 outer WireGuard tunnel, the inner NetBird mesh through the embedded client, or both; it runs on Linux, macOS, Windows, iOS, iPadOS and Android.">
+      <figcaption>Drawn figure, from <code>docs/figures/</code>.</figcaption>
+    </figure>
+    <div>
+      <h2>Three modes, one process</h2>
+      <p class="sub">The mode is chosen at install and can be switched at runtime with <code>goat-client setmode</code>.</p>
+      <table>
+        <thead><tr><th>Mode</th><th>Brings up</th></tr></thead>
+        <tbody>
+          <tr><td><code>wg-cp0-only</code></td><td>the outer WireGuard tunnel alone</td></tr>
+          <tr><td><code>netbird-only</code></td><td>the inner mesh alone, through the embedded NetBird client from <a href="https://github.com/USAREUR-AF/netbird">USAREUR-AF/netbird</a></td></tr>
+          <tr><td><code>combined</code></td><td>both tunnels in one process</td></tr>
+        </tbody>
+      </table>
+      <p class="sub" style="margin-top:16px">Linux, macOS and Windows on amd64 and arm64 get the Fyne desktop GUI and the Go daemon. iOS and iPadOS get a gomobile daemon framework in a Swift <code>NEPacketTunnelProvider</code> shell; Android a gomobile AAR in a Kotlin <code>VpnService</code> shell.</p>
+    </div>
+  </div>
+</section>
+
+<section id="cli">
+  <div class="wrap two">
+    <div>
+      <h2>The CLI</h2>
+      <p class="sub">The same binary as the GUI. It talks to the daemon over the local IPC socket and exits. On a headless box, import the bundle with the daemon's one-shot mode, then drive it from the shell.</p>
+<pre class="block"><span class="p">$ </span>sudo goat-clientd --import-bundle alice-bundle.cbor
+<span class="p">$ </span>goat-client status       <span class="d"># mode, state, bundle, counters</span>
+<span class="p">$ </span>goat-client connect      <span class="d"># idempotent</span>
+<span class="p">$ </span>goat-client disconnect
+<span class="p">$ </span>goat-client getmode
+<span class="p">$ </span>goat-client setmode combined</pre>
+      <p class="sub">Subcommands, output fields and exit codes: <a href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/cli.md">docs/cli.md</a>. When something does not come up: <a href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/troubleshooting.md">troubleshooting</a>.</p>
+    </div>
+    <div>
+      <h2>An unsigned bundle does not get in</h2>
+      <p class="sub">The daemon checks every bundle against the pinned trust roots before it keeps it. In the recording above, one changed byte in the site name is enough: <code>signature does not match any trust root</code>, exit 1, nothing persisted. The release workflow signs every asset too, with cosign, keyless, under its own GitHub identity; the README shows the <a href="https://github.com/USAREUR-AF/goat-client#verifying-release-artifacts"><code>cosign verify-blob</code> command</a>.</p>
+      <p class="sub">A public build trusts the system roots only and pins no bundle-signing key. A deployment adds its CA root to <code>internal/ipc/grpc/trust/</code> and its bundle-signing keys to <code>internal/trustanchor/anchors.yaml</code> before building.</p>
+    </div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="wrap two">
+    <div>
+      <h2>Build it</h2>
+      <p class="sub">The release workflow builds <code>.deb</code>, <code>.rpm</code>, <code>.dmg</code> and <code>.msi</code> packages for each tagged release; none is published yet, so build from source.</p>
+<pre class="block"><span class="p">$ </span>git clone https://github.com/USAREUR-AF/goat-client
+<span class="p">$ </span>cd goat-client
+<span class="p">$ </span>go build -o bin/ ./cmd/goat-client ./cmd/goat-clientd</pre>
+      <p class="sub">Cross-compile to any of the six desktop targets with <code>GOOS</code> and <code>GOARCH</code>; the GUI needs <code>CGO_ENABLED=1</code> and each platform's graphics libraries, the daemon alone builds with <code>CGO_ENABLED=0</code>. iOS and Android builds: <a href="https://github.com/USAREUR-AF/goat-client#build-from-source">README, Build from source</a>.</p>
+    </div>
+    <div>
+      <h2>First run</h2>
+      <p class="sub">The daemon starts with no bundle and waits. Give it one either way:</p>
+      <table>
+        <thead><tr><th>How</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td>In the GUI</td><td>Drop <code>bundle.cbor</code> on the window. It shows issued-to, site, expiry, peer key and endpoints from the file; <b>Apply</b> hands it to the daemon. The tray icon turns amber while the tunnel comes up, then green.</td></tr>
+          <tr><td>By hand</td><td>Put it at <code>/var/lib/goat-client/bundle.cbor</code> (Linux), <code>/Library/Application Support/goat-client/</code> (macOS) or <code>%ProgramData%\goat-client\</code> (Windows), and restart the daemon.</td></tr>
+        </tbody>
+      </table>
+      <p class="sub" style="margin-top:16px">Operator to device, end to end: <a href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/quickstart.md">docs/quickstart.md</a>.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>goat-client · Apache 2.0; forked from NetBird's BSD-3-Clause <code>client/</code> tree (<a href="https://github.com/USAREUR-AF/goat-client/blob/main/NOTICE">NOTICE</a>)</span>
+    <span><a href="https://github.com/USAREUR-AF/goat-client">GitHub</a> · <a href="https://github.com/USAREUR-AF/goat-client/blob/main/CHANGELOG.md">changelog</a> · <a href="https://github.com/USAREUR-AF/goatcore">goatcore</a> · <a href="https://github.com/USAREUR-AF/netbird">netbird</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+      if (navigator.clipboard) navigator.clipboard.writeText(b.getAttribute('data-copy')).then(done, function () {});
+    });
+  });
+
+  // Replays site/captures/cli-session.txt, then site/captures/handshake.txt, as recorded.
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (id) { return document.getElementById(id); };
+  var term = $('term'), lamp = $('lamp'), lampt = $('lampt'), phase = $('phase');
+  var HS_CMD = 'go test -tags mobile_realprotocol -count=1 -v -run TestMobile_RealProtocolHandshake ./tests/integration/...';
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function setLamp(cls, text) { lamp.className = 'lamp ' + cls; lampt.textContent = text; }
+  function setMode(m) { document.querySelectorAll('.modes .m').forEach(function (e) { e.classList.toggle('on', e.getAttribute('data-mode') === m); }); }
+  function effects(line) {
+    var m = line.match(/^mode:\s+(\S+)/); if (m) setMode(m[1]);
+    if (/signature invalid/.test(line)) setLamp('bad', 'bundle refused');
+    else if (/bundle imported/.test(line)) setLamp('wait', 'bundle imported');
+    else if (/tunnel: \S+ up/.test(line)) setLamp('wait', 'tunnel up');
+    else if (/handshake confirmed/.test(line)) setLamp('ok', 'handshake confirmed');
+  }
+  function cls(line) {
+    if (/signature invalid|not permitted|timeout/.test(line)) return 'r';
+    if (/^(--- PASS|PASS|ok\s)|succeeded|verify ok/.test(line)) return 'g';
+    if (/^#/.test(line)) return 'd';
+    return '';
+  }
+  Promise.all(['captures/cli-session.txt', 'captures/handshake.txt'].map(function (u) {
+    return fetch(u).then(function (r) { return r.text(); });
+  })).then(function (t) {
+    var items = [];
+    t[0].replace(/\n$/, '').split('\n').forEach(function (l) { items.push(l.indexOf('$ ') === 0 ? { cmd: l.slice(2) } : { out: l }); });
+    items.push({ phase: 'real-protocol test, one process' });
+    items.push({ cmd: HS_CMD });
+    t[1].replace(/\n$/, '').split('\n').forEach(function (l) { items.push({ out: l }); });
+    var lines = [];
+    function render() {
+      term.innerHTML = '<div>' + lines.slice(-60).join('\n') + '</div>';
+    }
+    function add(it) {
+      if (it.phase) { phase.textContent = it.phase; lines.push('<span class="sep">── ' + esc(it.phase) + ' ──</span>'); }
+      else if (it.cmd !== undefined) lines.push('<span class="c">$ ' + esc(it.cmd) + '</span>');
+      else { effects(it.out); var c = cls(it.out); lines.push(c ? '<span class="' + c + '">' + esc(it.out) + '</span>' : esc(it.out)); }
+      render();
+    }
+    if (still) { items.forEach(add); return; }
+    var i = 0;
+    function next() {
+      if (i >= items.length) { setTimeout(function () { lines = []; i = 0; setLamp('', 'no bundle'); setMode(''); phase.textContent = 'daemon + CLI, on a laptop'; next(); }, 5000); return; }
+      var it = items[i++];
+      if (it.cmd !== undefined) {
+        // type the command
+        var k = 0; lines.push('');
+        (function type() {
+          lines[lines.length - 1] = '<span class="c">$ ' + esc(it.cmd.slice(0, k)) + '</span>'; render();
+          if (k < it.cmd.length) { k += 3; setTimeout(type, 16); } else setTimeout(next, 450);
+        })();
+      } else { add(it); setTimeout(next, it.phase ? 900 : 140); }
+    }
+    next();
+  }).catch(function () { term.textContent = 'captures not loaded'; });
+})();
+</script>
+</body>
+</html>
