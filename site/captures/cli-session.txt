@@ -1,0 +1,20 @@
+# bundle: 556 bytes
+$ goat-clientd --socket d.sock --trust-roots roots.pem --bundle bundle.cbor --config config.toml --import-bundle tampered.cbor
+import-bundle: import: verify bundle: bundle signature does not match any trust root: signature invalid
+[exit 1]
+$ goat-clientd --socket d.sock --trust-roots roots.pem --bundle bundle.cbor --config config.toml --import-bundle alice.cbor
+goat-clientd: [2026-11-20T07:00:38Z] bundle imported: device=smoke-mobile-01 site=smoke-lab expires=2026-12-20T07:00:36Z
+goat-clientd: imported: device=smoke-mobile-01 site=smoke-lab expires=2026-12-20T07:00:36Z endpoints=1
+goat-clientd: post-import connect: configure: create TUN utun: operation not permitted (bundle is persisted; retry via daemon start)
+$ goat-client --daemon-addr d.sock getmode
+combined
+$ goat-client --daemon-addr d.sock status
+mode:           combined
+state:          disconnected
+bundle:         true
+issued-to:      smoke-mobile-01
+site:           smoke-lab
+expires:        2026-12-20T07:00:36Z
+bytes-in:       0
+bytes-out:      0
+inner-mesh:     state=disconnected peers=0 in=0 out=0
