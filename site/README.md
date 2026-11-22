@@ -20,6 +20,7 @@ python3 -m http.server 8000 --directory site           # look at it on http://lo
 | `captures/capture-handshake.sh` | records `captures/handshake.txt` |
 | `captures/handshake.txt` | the hermetic real-protocol test (`tests/integration`, tag `mobile_realprotocol`): two WireGuard devices in one process on user-space network stacks, a bundle signed and imported through the real import path, the tunnel up, a ping across it |
 | `build.py` | the check the pages workflow runs |
+| `fitcheck.py` | run by `build.py`: loads the page in headless Chrome at 1440 and 390 px and fails when a box is cut off |
 
 ## The first screen
 
@@ -49,3 +50,7 @@ marks each with `data-n`.
 
 `build.py` also fails if the code shown faintly behind the first screen is no
 longer in `internal/bundle/trust.go`.
+
+## Command boxes
+
+Every `<pre>` on the page is marked `data-box="command"` or `data-box="output"`; the replayed terminal is `aria-hidden` and exempt. A command box shows the whole command at any width: it wraps at spaces, each line of it a `<span class="ln">` with a hanging indent, and a word holding a hyphen or slash moves to the next line whole. Copy copies the command from the button's `data-copy`. `fitcheck.py` fails the build when a command box is cut off at 1440 or 390 px, an output box at 1440 px, or a `<pre>` carries no mark; with no Chrome it is skipped outside CI.
