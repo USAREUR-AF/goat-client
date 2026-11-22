@@ -10,6 +10,7 @@ figure in from docs/figures/, so the page does not keep a second copy of it.
 """
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -63,4 +64,7 @@ def copy():
 
 if __name__ == "__main__":
     copy()
-    sys.exit(0 if check() else 1)
+    ok = check()
+    # no command box cut off at 1440 or 390 px, no output box at 1440 (headless Chrome)
+    fit = subprocess.run([sys.executable, str(SITE / "fitcheck.py"), str(SITE), "index.html"]).returncode == 0
+    sys.exit(0 if ok and fit else 1)

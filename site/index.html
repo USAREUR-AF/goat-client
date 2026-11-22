@@ -106,7 +106,11 @@ h3 { font: 700 19px/1.3 var(--sans); margin: 0 0 8px; }
 figure { margin: 0; }
 figure img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--panel); }
 figcaption { font-size: 13.5px; color: var(--quiet); margin-top: 8px; }
-.block { background: var(--term); color: var(--term-ink); border-radius: 10px; padding: 16px 18px; font: 13.5px/1.6 var(--mono); overflow-x: auto; white-space: pre; margin: 0 0 12px; }
+.block { background: var(--term); color: var(--term-ink); border-radius: 10px; padding: 16px 18px; font: 13.5px/1.6 var(--mono); overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 12px; }
+/* a command shows whole: it wraps at spaces, continuation lines hang two characters in */
+.cmd pre .ln, .block .ln { display: block; padding-left: 2ch; text-indent: -2ch; }
+/* a word with a hyphen or slash moves to the next line whole, and breaks only if it alone is wider than the box */
+pre .ln .w { display: inline-block; max-width: 100%; text-indent: 0; }
 .block .p { color: var(--term-cmd); user-select: none; }
 .block .d { color: var(--term-dim); }
 table { border-collapse: collapse; width: 100%; font-size: 15.5px; background: var(--panel); border: 1.5px solid var(--rule); }
@@ -207,8 +211,8 @@ footer a { color: inherit; }
         <a class="btn" href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/cli.md">CLI</a>
       </div>
       <div class="cmd">
-        <pre><span class="p">$ </span>git clone https://github.com/USAREUR-AF/goat-client &amp;&amp; cd goat-client
-<span class="p">$ </span>go build -o bin/ ./cmd/goat-client ./cmd/goat-clientd</pre>
+        <pre data-box="command"><span class="ln"><span class="p">$ </span>git clone <span class="w">https://github.com/USAREUR-AF/goat-client</span> &amp;&amp; cd <span class="w">goat-client</span>
+</span><span class="ln"><span class="p">$ </span>go build <span class="w">-o</span> <span class="w">bin/</span> <span class="w">./cmd/goat-client</span> <span class="w">./cmd/goat-clientd</span></span></pre>
         <button class="copy" type="button" data-copy="git clone https://github.com/USAREUR-AF/goat-client && cd goat-client && go build -o bin/ ./cmd/goat-client ./cmd/goat-clientd">Copy</button>
       </div>
       <p class="cmd-note">Needs Go (the version in <code>go.mod</code>); the GUI also needs cgo and the platform's graphics libraries. No release is published yet.</p>
@@ -274,12 +278,12 @@ footer a { color: inherit; }
     <div>
       <h2>The CLI</h2>
       <p class="sub">The same binary as the GUI. It talks to the daemon over the local IPC socket and exits. On a headless box, import the bundle with the daemon's one-shot mode, then drive it from the shell.</p>
-<pre class="block"><span class="p">$ </span>sudo goat-clientd --import-bundle alice-bundle.cbor
-<span class="p">$ </span>goat-client status       <span class="d"># mode, state, bundle, counters</span>
-<span class="p">$ </span>goat-client connect      <span class="d"># idempotent</span>
-<span class="p">$ </span>goat-client disconnect
-<span class="p">$ </span>goat-client getmode
-<span class="p">$ </span>goat-client setmode combined</pre>
+<pre class="block" data-box="command"><span class="ln"><span class="p">$ </span>sudo <span class="w">goat-clientd</span> <span class="w">--import-bundle</span> <span class="w">alice-bundle.cbor</span>
+</span><span class="ln"><span class="p">$ </span><span class="w">goat-client</span> status       <span class="d"># mode, state, bundle, counters</span>
+</span><span class="ln"><span class="p">$ </span><span class="w">goat-client</span> connect      <span class="d"># idempotent</span>
+</span><span class="ln"><span class="p">$ </span><span class="w">goat-client</span> disconnect
+</span><span class="ln"><span class="p">$ </span><span class="w">goat-client</span> getmode
+</span><span class="ln"><span class="p">$ </span><span class="w">goat-client</span> setmode combined</span></pre>
       <p class="sub">Subcommands, output fields and exit codes: <a href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/cli.md">docs/cli.md</a>. When something does not come up: <a href="https://github.com/USAREUR-AF/goat-client/blob/main/docs/troubleshooting.md">troubleshooting</a>.</p>
     </div>
     <div>
@@ -295,9 +299,9 @@ footer a { color: inherit; }
     <div>
       <h2>Build it</h2>
       <p class="sub">The release workflow builds <code>.deb</code>, <code>.rpm</code>, <code>.dmg</code> and <code>.msi</code> packages for each tagged release; none is published yet, so build from source.</p>
-<pre class="block"><span class="p">$ </span>git clone https://github.com/USAREUR-AF/goat-client
-<span class="p">$ </span>cd goat-client
-<span class="p">$ </span>go build -o bin/ ./cmd/goat-client ./cmd/goat-clientd</pre>
+<pre class="block" data-box="command"><span class="ln"><span class="p">$ </span>git clone <span class="w">https://github.com/USAREUR-AF/goat-client</span>
+</span><span class="ln"><span class="p">$ </span>cd <span class="w">goat-client</span>
+</span><span class="ln"><span class="p">$ </span>go build <span class="w">-o</span> <span class="w">bin/</span> <span class="w">./cmd/goat-client</span> <span class="w">./cmd/goat-clientd</span></span></pre>
       <p class="sub">Cross-compile to any of the six desktop targets with <code>GOOS</code> and <code>GOARCH</code>; the GUI needs <code>CGO_ENABLED=1</code> and each platform's graphics libraries, the daemon alone builds with <code>CGO_ENABLED=0</code>. iOS and Android builds: <a href="https://github.com/USAREUR-AF/goat-client#build-from-source">README, Build from source</a>.</p>
     </div>
     <div>
