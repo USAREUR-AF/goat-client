@@ -3,9 +3,13 @@ package innermesh
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -48,6 +52,10 @@ type Netbird struct {
 	upAt     time.Time
 	logBuf   *ringWriter
 	deviceID string
+	// stateDir holds the netbird config (with this device's WireGuard key),
+	// state file and cached network map, one subdirectory per management
+	// URL. Empty keeps everything in memory, so every start is a new peer.
+	stateDir string
 }
 
 // netbirdMaxLogs is the Netbird impl's log ring-buffer capacity in
@@ -66,11 +74,37 @@ const netbirdMaxLogs = 64 << 10
 // Configure errors surface at Configure time rather than at New
 // time.
 func NewNetbird(deviceID string) *Netbird {
+	return NewNetbirdWithStateDir(deviceID, DefaultStateDir())
+}
+
+// NewNetbirdWithStateDir is NewNetbird with an explicit state directory.
+// An empty stateDir keeps the netbird config in memory.
+func NewNetbirdWithStateDir(deviceID, stateDir string) *Netbird {
 	return &Netbird{
 		state:    StateClosed,
 		logBuf:   newRingWriter(netbirdMaxLogs),
 		deviceID: deviceID,
+		stateDir: stateDir,
 	}
+}
+
+// DefaultStateDir is the per-user directory for the inner mesh's netbird
+// state: <user config dir>/goat-client/netbird. Empty when the platform
+// reports no user config directory.
+func DefaultStateDir() string {
+	root, err := os.UserConfigDir()
+	if err != nil || root == "" {
+		return ""
+	}
+	return filepath.Join(root, "goat-client", "netbird")
+}
+
+// profileDir returns the state directory for one management URL. Keeping
+// one directory per management means a device that joins a second goatnet
+// gets a second WireGuard key instead of reusing the first one.
+func profileDir(stateDir, managementURL string) string {
+	sum := sha256.Sum256([]byte(managementURL))
+	return filepath.Join(stateDir, hex.EncodeToString(sum[:8]))
 }
 
 // Configure stores the profile. Validates that ManagementURL +
@@ -120,7 +154,7 @@ func (n *Netbird) Connect(ctx context.Context) error {
 	// feeds the {hostname} substitution in the SetupKey's
 	// AutoPeerNameTemplate (USAREUR-AF/netbird 970d9506a).
 	deviceName := composeIdentity(cfg.BundleDeviceID, n.deviceID)
-	client, err := netbird.New(netbird.Options{
+	opts := netbird.Options{
 		DeviceName:    deviceName,
 		SetupKey:      cfg.SetupKey,
 		ManagementURL: cfg.ManagementURL,
@@ -128,7 +162,23 @@ func (n *Netbird) Connect(ctx context.Context) error {
 		LogOutput:     n.logBuf,
 		// NoUserspace stays false: the client requires userspace
 		// WireGuard. netbird's embed default already matches.
-	})
+	}
+	// With a state directory the netbird config, and with it this device's
+	// WireGuard key, survives a restart: the device stays the same peer, and
+	// the client can start from its cached network map when management is
+	// unreachable (the cache is written beside the state file).
+	if n.stateDir != "" {
+		dir := profileDir(n.stateDir, cfg.ManagementURL)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			n.mu.Lock()
+			n.state = StateError
+			n.mu.Unlock()
+			return fmt.Errorf("innermesh/netbird: state directory: %w", err)
+		}
+		opts.ConfigPath = filepath.Join(dir, "config.json")
+		opts.StatePath = filepath.Join(dir, "state.json")
+	}
+	client, err := netbird.New(opts)
 	if err != nil {
 		n.mu.Lock()
 		n.state = StateError

@@ -52,7 +52,7 @@ func TestNetbird_PeerNameIsComposed(t *testing.T) {
 		wantHostname   = "ops-04 (test-host)"
 	)
 
-	nb := NewNetbird(deviceReported)
+	nb := NewNetbirdWithStateDir(deviceReported, t.TempDir())
 	t.Cleanup(func() { _ = nb.Close() })
 
 	cfg := Config{

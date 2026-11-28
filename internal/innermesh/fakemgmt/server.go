@@ -49,6 +49,11 @@ type Server struct {
 	// carries the composed bundle DeviceID + device-reported
 	// identity from innermesh.composeIdentity.
 	lastLogin *mgmtproto.LoginRequest
+
+	// lastPeerKey is the WireGuard public key of the most recent client
+	// that logged in. Tests use it to check that a restart keeps the
+	// device's peer identity.
+	lastPeerKey string
 }
 
 // LastLogin returns the most recent successfully-decrypted
@@ -59,6 +64,14 @@ func (s *Server) LastLogin() *mgmtproto.LoginRequest {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.lastLogin
+}
+
+// LastPeerKey returns the WireGuard public key of the most recent client
+// that logged in, or "" before any login.
+func (s *Server) LastPeerKey() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastPeerKey
 }
 
 // Option configures a Server at construction. Use WithSignalURI to
