@@ -11,10 +11,10 @@ require (
 	github.com/netbirdio/netbird v0.70.5
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	go.opentelemetry.io/otel v1.43.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 	golang.org/x/mobile v0.0.0-20260508232728-bebd421c7fa8
 	golang.org/x/net v0.54.0
-	golang.org/x/sys v0.44.0
+	golang.org/x/sys v0.45.0
 	golang.zx2c4.com/wireguard v0.0.0-20250521234502-f333402bd9cb
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6
 	google.golang.org/grpc v1.81.0
