@@ -155,7 +155,7 @@ func TestThreeModeSmoke_NetbirdOnly(t *testing.T) {
 	tb := mintTestBundle(t, false /* no wg-cp0 */, mgmtURL)
 	dir := writeBundleFile(t, tb.bytes)
 	ft := newFakeTunnel()
-	mesh := innermesh.NewNetbird("smoke-netbirdonly")
+	mesh := innermesh.NewNetbirdWithStateDir("smoke-netbirdonly", t.TempDir())
 	t.Cleanup(func() { _ = mesh.Close() })
 
 	d, err := New(Config{
@@ -234,7 +234,7 @@ func TestThreeModeSmoke_Combined(t *testing.T) {
 	tb := mintTestBundle(t, true /* wg-cp0 */, mgmtURL)
 	dir := writeBundleFile(t, tb.bytes)
 	ft := newFakeTunnel()
-	mesh := innermesh.NewNetbird("smoke-combined")
+	mesh := innermesh.NewNetbirdWithStateDir("smoke-combined", t.TempDir())
 	t.Cleanup(func() { _ = mesh.Close() })
 
 	d, err := New(Config{

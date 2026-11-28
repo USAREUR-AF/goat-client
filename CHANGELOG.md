@@ -20,3 +20,9 @@ First public release of goat-client.
   signing key. Deployments add their private CA root in
   `internal/ipc/grpc/trust/` and their signing keys in
   `internal/trustanchor/anchors.yaml` before building.
+- The inner mesh keeps its NetBird config, and with it the device's WireGuard
+  key, in `<user config dir>/goat-client/netbird/<management>/`, so a restart
+  stays the same peer instead of registering a new one. One directory per
+  management URL. The NetBird client writes its last network map there and,
+  when management is unreachable at start, comes up from it (USAREUR-AF/goatcore
+  ADR 1273).

@@ -51,7 +51,7 @@ func TestNetbird_LifecycleAgainstFakes(t *testing.T) {
 		t.Fatalf("fakemgmt.Listen: %v", err)
 	}
 
-	nb := NewNetbird("goat-test-peer")
+	nb := NewNetbirdWithStateDir("goat-test-peer", t.TempDir())
 	t.Cleanup(func() { _ = nb.Close() })
 
 	cfg := Config{

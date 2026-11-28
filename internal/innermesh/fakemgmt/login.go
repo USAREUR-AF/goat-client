@@ -52,6 +52,7 @@ func (s *Server) Login(_ context.Context, msg *mgmtproto.EncryptedMessage) (*mgm
 	// the server.
 	s.mu.Lock()
 	s.lastLogin = req
+	s.lastPeerKey = clientPubKey.String()
 	s.mu.Unlock()
 
 	resp := &mgmtproto.LoginResponse{
