@@ -25,7 +25,7 @@ require golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 
 require (
 	cunicu.li/go-rosenpass v0.4.0 // indirect
-	github.com/BurntSushi/toml v1.5.0 // indirect
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/aws/aws-sdk-go-v2 v1.38.3 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.31.6 // indirect
@@ -45,7 +45,7 @@ require (
 	github.com/caddyserver/zerossl v0.1.3 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cilium/ebpf v0.15.0 // indirect
+	github.com/cilium/ebpf v0.22.0 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/coreos/go-iptables v0.7.0 // indirect
