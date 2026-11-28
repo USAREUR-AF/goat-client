@@ -1,6 +1,6 @@
 module github.com/USAREUR-AF/goat-client
 
-go 1.25.5
+go 1.26.0
 
 require (
 	fyne.io/fyne/v2 v2.7.3
@@ -10,7 +10,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/netbirdio/netbird v0.70.5
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	go.opentelemetry.io/otel v1.43.0
+	go.opentelemetry.io/otel v1.47.0
 	golang.org/x/crypto v0.51.0
 	golang.org/x/mobile v0.0.0-20260508232728-bebd421c7fa8
 	golang.org/x/net v0.54.0
@@ -21,7 +21,11 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
+require (
+	go.opentelemetry.io/otel/log v1.47.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
+)
 
 require (
 	cunicu.li/go-rosenpass v0.4.0 // indirect
@@ -50,7 +54,6 @@ require (
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/coreos/go-iptables v0.7.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fredbi/uri v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fyne-io/gl-js v0.2.0 // indirect
@@ -60,7 +63,7 @@ require (
 	github.com/gliderlabs/ssh v0.3.8 // indirect
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/render v0.2.0 // indirect
@@ -116,7 +119,6 @@ require (
 	github.com/pion/turn/v4 v4.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.9 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/quic-go/quic-go v0.55.0 // indirect
 	github.com/rymdport/portal v0.4.2 // indirect
@@ -126,7 +128,7 @@ require (
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect; oss-allow: public dependency
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
-	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/things-go/go-socks5 v0.0.4 // indirect
 	github.com/ti-mo/conntrack v0.5.1 // indirect
 	github.com/ti-mo/netfilter v0.5.2 // indirect
@@ -141,8 +143,8 @@ require (
 	github.com/zcalusic/sysinfo v1.1.3 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
+	go.opentelemetry.io/otel/metric v1.47.0 // indirect
+	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/image v0.40.0 // indirect
